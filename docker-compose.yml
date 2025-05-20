@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: kara-medusa-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: medusa
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kara-medusa-network
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kara-medusa-migrator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: medusa
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      KARA_API_USERNAME: ${KARA_API_USERNAME:-elevated}
+      KARA_API_PASSWORD: ${KARA_API_PASSWORD:-nynwEd-7bucpe-rysdim}
+      BATCH_SIZE: ${BATCH_SIZE:-10}
+      DOWNLOAD_IMAGES: ${DOWNLOAD_IMAGES:-True}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      TIMEOUT: ${TIMEOUT:-120}  # Increased timeout
+    volumes:
+      - ./logs:/app/logs
+      - ./media:/app/media
+    networks:
+      - kara-medusa-network
+
+volumes:
+  postgres_data:
+    name: kara-medusa-postgres-data
+
+networks:
+  kara-medusa-network:
+    name: kara-medusa-network
